@@ -1,0 +1,396 @@
+\documentclass[10pt]{beamer}
+\usetheme{Warsaw}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage[notocbib]{apacite}
+
+
+\setbeamertemplate{caption}{\centering\insertcaption\par}
+\setlength{\belowcaptionskip}{15pt}
+\renewcommand{\thetable}{}
+
+\providecommand{\e}[1]{\ensuremath{\times 10^{#1}}}
+
+\begin{document}
+
+
+\date{}
+\author{Micha\l{}  Burdukiewicz}
+\institute{ 
+University of Wroc\l{}aw, Department of Genomics, Poland}
+
+\title{Encodings of amino acids and their impact on signal peptide prediction}
+
+
+\begin{frame}
+\maketitle
+
+<<echo = FALSE,message=FALSE,results='asis'>>=
+library(reshape2)
+library(ggplot2)
+library(grid)
+library(biogram)
+library(xtable)
+library(seqinr)
+library(signalHsmm)
+
+theme_presentation <- theme(plot.background=element_rect(fill = "transparent",
+                                                   colour = "transparent"),
+                      plot.margin = unit(c(1,1,1,1), "cm"),
+                      axis.text.x = element_text(size=7), 
+                      axis.text.y = element_text(size=7),
+                      axis.title.x = element_text(size=11, vjust = -1), 
+                      axis.title.y = element_text(size=11, vjust = 1),
+                      strip.text = element_text(size=11),
+                      legend.text = element_text(size=7), 
+                      legend.title = element_text(size=11),
+                      plot.title = element_text(size=17),
+                      panel.grid.major = element_line(colour="lightgrey", linetype = "dashed"),
+                      panel.background = element_rect(fill = "transparent",colour = "black"),
+                      legend.background = element_rect(fill="NA"))
+
+@
+
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Motivation}
+
+
+\begin{frame}
+To reduce dimensionality of the problem, signalHsmm aggregates amino acids to four physicochemical groups.
+\end{frame}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+group2df <- function(group_list)
+  data.frame(Groups = sapply(group_list, function(i)
+    paste0(toupper(sort(i)), collapse = ", ")))
+
+print(xtable(group2df(aaaggregation),
+             caption = "Classification of amino acids used by signalHsmm."),
+      include.rownames = FALSE)
+
+@
+\end{frame}
+
+\begin{frame}
+How optimal is this grouping? How does grouping of amino acids influence detection of signal peptides and cleavage sites?
+\end{frame}
+
+\AtBeginSection[]
+{
+\begin{frame}<beamer>
+\frametitle{Outline}
+\tableofcontents[currentsection]
+\end{frame}
+}
+
+
+\section{Amino acid properties}
+
+\subsection{Size}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+load("grouping_properties.RData")
+load("prop_names.RData")
+sizes <- grouping_properties[, paste0("P", c(30, 36, 54, 201))]
+msizes <- melt(sizes)
+
+levels(msizes[["Var2"]]) <- c("Size", "Molecular weight", "Volume", "Bulkiness")
+
+#prop_names[[2]][as.numeric(substr(as.character(levels(msizes[, "Var2"])), 2, 3))]
+ggplot(msizes, aes(x = Var1, fill = Var2, y = value)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_discrete("Variable") +
+  scale_x_discrete("Amino acid") +
+  scale_y_continuous("Value") +
+  theme_presentation + theme(legend.position="bottom")
+@
+\end{frame}
+
+\subsection{Polarity}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+sizes <- grouping_properties[, paste0("P", c(202))]
+msizes <- data.frame(Var1 = names(sizes), value = sizes)
+
+#prop_names[[2]][as.numeric(substr(as.character(levels(msizes[, "Var2"])), 2, 3))]
+ggplot(msizes, aes(x = Var1, y = value)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_x_discrete("Amino acid") +
+  scale_y_continuous("Polarity") +
+  theme_presentation
+@
+\end{frame}
+
+\subsection{PI}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+sizes <- grouping_properties[, paste0("P", c(203))]
+msizes <- data.frame(Var1 = names(sizes), value = sizes)
+
+#prop_names[[2]][as.numeric(substr(as.character(levels(msizes[, "Var2"])), 2, 3))]
+ggplot(msizes, aes(x = Var1, y = value)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_x_discrete("Amino acid") +
+  scale_y_continuous("Isoelectric point") +
+  theme_presentation
+@
+\end{frame}
+
+\subsection{Hydrophobicity}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+load("grouping_properties.RData")
+load("prop_names.RData")
+sizes <- grouping_properties[, paste0("P", c(1, 26, 33, 57))]
+msizes <- melt(sizes)
+
+levels(msizes[["Var2"]]) <- c("H. index", "Normalized average h.", "Consensus normalized h.", "H. value")
+
+#prop_names[[2]][as.numeric(substr(as.character(levels(msizes[, "Var2"])), 2, 3))]
+ggplot(msizes, aes(x = Var1, fill = Var2, y = value)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_discrete("Variable") +
+  scale_x_discrete("Amino acid") +
+  scale_y_continuous("Hydrophobicity value") +
+  theme_presentation + theme(legend.position="bottom")
+@
+\end{frame}
+
+\subsection{$\alpha$-chain}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+load("grouping_properties.RData")
+load("prop_names.RData")
+sizes <- grouping_properties[, paste0("P", c(1, 26, 33, 57))]
+msizes <- melt(sizes)
+
+levels(msizes[["Var2"]]) <- c("Burgess et al., 1974", "Chou-Fasman, 1978", "Prabhakaran, 1990", "Deleage & Roux, 1987")
+
+#prop_names[[2]][as.numeric(substr(as.character(levels(msizes[, "Var2"])), 2, 3))]
+ggplot(msizes, aes(x = Var1, fill = Var2, y = value)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_discrete("Variable") +
+  scale_x_discrete("Amino acid") +
+  scale_y_continuous(expression(alpha)) +
+  theme_presentation + theme(legend.position="bottom")
+@
+\end{frame}
+
+\section{Methods}
+
+\subsection{Amino acid groupings}
+
+\begin{frame}
+For each combination of each variant of all properties:
+\begin{enumerate}
+\item calculate euclidean distance between amino acids;
+\item cluster amino acids (complete-linkage clustering);
+\item extract four highest clusters of amino acids.
+\end{enumerate}
+
+67 amino acid groupings in total (signalHsmm, 2 standard, 65 created).
+\end{frame}
+
+\subsection{Cross-validation}
+
+\begin{frame}
+For each grouping:
+\begin{enumerate}
+\item sample $3722$ from $134044$ negative sequences (to have balanced data set);
+\item perform 5-fold cross-validation using all groupings (train an instance of signalHsmm using a single grouping);
+\item repeat steps 1:2 15 times.
+\end{enumerate}
+\end{frame}
+
+\section{Cross-validation}
+
+\subsection{AUC}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+load("fold_res_df.RData")
+
+ggplot(data.frame(AUC = fold_res_df[, "AUC"]), aes(x = AUC)) + 
+  geom_density(fill = "black", alpha = 0.5) +
+  geom_vline(xintercept = fold_res_df[length(fold_res_df[, "AUC"]), "AUC"], col = "red",
+             size = 1) +
+  theme_presentation
+@
+\end{frame}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "AUC"], decreasing = TRUE)[1L]]]),
+             caption = "Best grouping of amino acids - AUC."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "AUC"], decreasing = FALSE)[1L]]]),
+             caption = "Worst grouping of amino acids - AUC."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+\subsection{H}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+ggplot(data.frame(H = fold_res_df[, "H"]), aes(x = H)) + 
+  geom_density(fill = "black", alpha = 0.5) +
+  geom_vline(xintercept = fold_res_df[length(fold_res_df[, "H"]), "H"], col = "red",
+             size = 1) +
+  theme_presentation
+@
+\end{frame}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "H"], decreasing = TRUE)[1L]]]),
+             caption = "Best grouping of amino acids - H."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "H"], decreasing = FALSE)[1L]]]),
+             caption = "Worst grouping of amino acids - H."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+\subsection{Specificity}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+ggplot(data.frame(Specificity = fold_res_df[, "Spec"]), aes(x = Specificity)) + 
+  geom_density(fill = "black", alpha = 0.5) +
+  geom_vline(xintercept = fold_res_df[length(fold_res_df[, "Spec"]), "Spec"], col = "red", size = 1) +
+  theme_presentation
+@
+\end{frame}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "Spec"], decreasing = TRUE)[1L]]]),
+             caption = "Best grouping of amino acids - specificity."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "Spec"], decreasing = FALSE)[1L]]]),
+             caption = "Worst grouping of amino acids - specificity."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+\subsection{Mean cleavage site displacement}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+ggplot(data.frame(mean_cs = fold_res_df[, "mean_cs"]), aes(x = mean_cs)) + 
+  geom_density(fill = "black", alpha = 0.5) +
+  geom_vline(xintercept = fold_res_df[length(fold_res_df[, "mean_cs"]), "mean_cs"], col = "red", size = 1) +
+  scale_x_continuous("Mean cleavage site displacement")+
+  theme_presentation
+@
+\end{frame}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "mean_cs"], decreasing = FALSE)[1L]]]),
+             caption = "Best grouping of amino acids - mean cleavage site displacement."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "mean_cs"], decreasing = TRUE)[1L]]]),
+             caption = "Worst grouping of amino acids - mean cleavage site displacement."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,warning=FALSE,results='asis',fig.height=5.3>>=
+ggplot(data.frame(med_cs = fold_res_df[, "med_cs"]), aes(x = med_cs)) + 
+  geom_histogram(fill = "black", alpha = 0.5, position = "dodge") +
+  geom_vline(xintercept = fold_res_df[length(fold_res_df[, "med_cs"]), "med_cs"], col = "red", size = 1) +
+  scale_x_continuous("Median cleavage site displacement")+
+  theme_presentation
+@
+\end{frame}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "med_cs"], decreasing = FALSE)[1L]]]),
+             caption = "Best (ex aequo) grouping of amino acids - median cleavage site displacement."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "med_cs"], decreasing = FALSE)[2L]]]),
+             caption = "Best (ex aequo) grouping of amino acids - median cleavage site displacement."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+\begin{frame}
+<<echo = FALSE,message=FALSE,results='asis',fig.height=5.3>>=
+print(xtable(group2df(all_groups[[order(fold_res_df[, "med_cs"], decreasing = TRUE)[1L]]]),
+             caption = "Worst grouping of amino acids - median cleavage site displacement."),
+      include.rownames = FALSE)
+@
+\end{frame}
+
+\section{Conclusion and perspectives}
+
+\begin{frame}
+Grouping on amino acids has strong impact on misclassifications.
+\end{frame}
+
+\begin{frame}
+Detection of signal peptides:
+\begin{enumerate}
+\item charged amino acids should be grouped separately;
+\item aromatic amino acids should not be grouped together;
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+Detection of cleavage sites:
+\begin{enumerate}
+\item hydrophibic amino acids should be grouped together;
+\end{enumerate}
+\end{frame}
+
+\end{document}

@@ -83,7 +83,21 @@ print(xtable(group2df(aaaggregation),
 \end{frame}
 
 \begin{frame}
-How optimal is this grouping? How does grouping of amino acids influence detection of signal peptides and cleavage sites?
+Is the default grouping optimal? 
+
+\medskip
+
+How does grouping of amino acids influence detection of signal peptides and cleavage sites?
+\end{frame}
+
+
+\begin{frame}
+Assumptions:
+\begin{enumerate}
+\item The optimal number of amino acid groups is 4.
+\item Important properties are: size, polarity, charge, hydrophobicity and probability of being in the $\alpha$-chain. 
+\item All properties above are equally important and distinguish signal peptides from matures proteins.
+\end{enumerate}
 \end{frame}
 
 \AtBeginSection[]
@@ -204,7 +218,7 @@ For each combination of each variant of all properties:
 \item extract four highest clusters of amino acids.
 \end{enumerate}
 
-67 amino acid groupings in total (signalHsmm, 2 standard, 65 created).
+67 amino acid groupings in total (signalHsmm, 2 standard, 65 newly created).
 \end{frame}
 
 \subsection{Cross-validation}
@@ -372,7 +386,7 @@ print(xtable(group2df(all_groups[[order(fold_res_df[, "med_cs"], decreasing = TR
 @
 \end{frame}
 
-\section{Conclusion and perspectives}
+\section{Conclusions and perspectives}
 
 \begin{frame}
 Grouping on amino acids has strong impact on misclassifications.
@@ -389,7 +403,8 @@ Detection of signal peptides:
 \begin{frame}
 Detection of cleavage sites:
 \begin{enumerate}
-\item hydrophibic amino acids should be grouped together;
+\item hydrophobic amino acids should be grouped together;
+\item amino acids typical for cleavage sites (A, G, I, L, P, V) should not be grouped together.
 \end{enumerate}
 \end{frame}
 

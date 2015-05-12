@@ -26,27 +26,23 @@ pos_seqs <- pos_seqs[-c(too_short)]
 pos_ids <- cvFolds(length(pos_seqs), K = 5)
 neg_ids <- cvFolds(length(neg_seqs), K = 5)
 
-sp_lengths <- sapply(pos_seqs, function(i) attr(i, "sig")[2])
-
-
-pos_ids <- cvFolds(length(pos_seqs), K = 5)
-cv_neg <- neg_seqs[sample(1L:length(neg_seqs), length(pos_seqs))]
-
-fold_res <- lapply(all_groups[69], function(agg_group) {
-  sapply(1L:5, function(fold) {
-    model_cv <- train_hsmm(pos_seqs[pos_ids[[4]][,][pos_ids[[5]] != fold]], agg_group)
-    test_dat <- c(pos_seqs[pos_ids[[4]][,][pos_ids[[5]] == fold]],
-                  cv_neg[pos_ids[[4]][,][pos_ids[[5]] == fold]])
-    preds <- sapply(predict(model_cv, test_dat), function(single_pred)
-      c(single_pred[["sp_probability"]], single_pred[["sp_end"]]))
-    measures <- HMeasure(c(rep(1, length(pos_seqs[pos_ids[[4]][,][pos_ids[[5]] == fold]])),
-                           rep(0, length(pos_seqs[pos_ids[[4]][,][pos_ids[[5]] == fold]]))),
-                         preds[1, ])[["metrics"]][, c("AUC", "H", "Gini", "Sens", "Spec", "FPR")]
-    diffs <- abs(sp_lengths[pos_ids[[4]][,][pos_ids[[5]] == fold]] - 
-                   preds[2, 1L:length(pos_seqs[pos_ids[[4]][,][pos_ids[[5]] == fold]])])
-    c(measures, mean_cs = mean(diffs), med_cs = median(diffs))
+fold_res <- pblapply(1L:10, function(dummy) {
+  pos_ids <- cvFolds(length(pos_seqs), K = 5)
+  cv_neg <- neg_seqs[sample(1L:length(neg_seqs), length(pos_seqs))]
+  lapply(all_groups, function(agg_group) {
+    lapply(1L:5, function(fold) {
+      model_cv <- train_hsmm(pos_seqs[pos_ids[[4]][,][pos_ids[[5]] != fold]], agg_group)
+      test_dat <- c(pos_seqs[pos_ids[[4]][,][pos_ids[[5]] == fold]],
+                    cv_neg[pos_ids[[4]][,][pos_ids[[5]] == fold]])
+      preds <- cbind(t(sapply(predict(model_cv, test_dat), function(single_pred)
+        c(prob = single_pred[["sp_probability"]], cs_pred = single_pred[["sp_end"]]))),
+        cs_real = sapply(test_dat, function(i) 
+          ifelse(is.null(attr(i, "sig")[2]), NA, attr(i, "sig")[2])))
+      preds
+    })
   })
 })
+
 
 
 fold_res_df <- t(sapply(fold_res, function(i) rowMeans(matrix(unlist(i), ncol = 5))))

@@ -4,6 +4,9 @@ library(cvTools)
 library(hmeasure)
 library(pbapply)
 
+source("aa_groups.R")
+
+
 # working directory ------------------------------
 
 if(Sys.info()["nodename"] == "MICHALKOMP" )
@@ -23,8 +26,6 @@ neg_seqs <- neg_seqs[-unique(c(atyp_aa, too_short))]
 too_short <- which(sapply(pos_seqs, length) < 80)
 pos_seqs <- pos_seqs[-c(too_short)]
 
-pos_ids <- cvFolds(length(pos_seqs), K = 5)
-neg_ids <- cvFolds(length(neg_seqs), K = 5)
 
 fold_res <- pblapply(1L:10, function(dummy) {
   pos_ids <- cvFolds(length(pos_seqs), K = 5)
@@ -43,11 +44,6 @@ fold_res <- pblapply(1L:10, function(dummy) {
   })
 })
 
-
-
-fold_res_df <- t(sapply(fold_res, function(i) rowMeans(matrix(unlist(i), ncol = 5))))
-colnames(fold_res_df) <- c("AUC", "H", "Gini", "Sens", "Spec", "FPR", "mean_cs", "med_cs")
-
-save(fold_res_df, all_groups, file = "fold_res_df.RData")
+save(fold_res_df, all_groups, file = paste0(pathway, "fold_res_df.RData"))
 
 

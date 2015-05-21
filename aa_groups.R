@@ -46,8 +46,7 @@ all_groups_nonpol <- lapply(1L:nrow(all_traits_combn_nonpol), function(single_tr
 aa1 = list(`1` = c("g", "a", "p", "v", "l", "i", "m"), 
            `2` = c("k", "r", "h"), 
            `3` = c("d", "e"), 
-           `4` = c("f", "w", "y", "s", "t", 
-                                                                                                     "c", "n", "q"))
+           `4` = c("f", "w", "y", "s", "t", "c", "n", "q"))
 
 aa2 = list(`1` = c("g", "a", "p", "v", "l", "i", "m", "f"), 
            `2` = c("k", "r", "h"), 

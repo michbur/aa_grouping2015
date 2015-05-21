@@ -26,6 +26,7 @@ neg_seqs <- neg_seqs[-unique(c(atyp_aa, too_short))]
 too_short <- which(sapply(pos_seqs, length) < 80)
 pos_seqs <- pos_seqs[-c(too_short)]
 
+library(ROCR)
 
 fold_res <- pblapply(1L:10, function(dummy) {
   pos_ids <- cvFolds(length(pos_seqs), K = 5)
@@ -44,6 +45,22 @@ fold_res <- pblapply(1L:10, function(dummy) {
   })
 })
 
-save(fold_res_df, all_groups, file = paste0(pathway, "fold_res_df.RData"))
+save(fold_res, all_groups, file = paste0(pathway, "fold_res_df.RData"))
 
 
+fold_res[[1]][[1]][[1]]
+
+single_cv <- fold_res[[1]][[1]][[1]]
+
+#ROCR prediction object
+pred_obj <- prediction(single_cv[, "prob"], !is.na(single_cv[, "cs_real"]))
+
+predicted_cl <- single_cv[, "prob"] > 0.2
+real_cl <- !is.na(single_cv[, "cs_real"])
+
+table(predicted_cl, real_cl)
+
+
+HMeasure(!is.na(single_cv[, "cs_real"]), single_cv[, "prob"])[["metrics"]]
+slot(prec, "x.values")[[1]][which.max(slot(prec, "y.values")[[1]] > 0.5)]
+HMeasure(true.class, scores)
